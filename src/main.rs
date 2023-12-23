@@ -32,6 +32,7 @@ struct ListCli {
     path: Option<std::path::PathBuf>,
 }
 
+// parse ls command
 fn parse_ls_command() {
     let list_cli = ListCli::parse();
     println!("{:#?}", list_cli);
@@ -45,12 +46,17 @@ fn parse_ls_command() {
     println!("fds: {:?}", fds);
 }
 
+// get files and directories in the path
 fn get_files_and_dirs(path: &str) -> Vec<String> {
+    // get path length to remove it from the path string
     let path_len = path.len();
     let mut files_and_dirs = Vec::new();
+
+    // read files and directories from the path
     let paths = std::fs::read_dir(path).unwrap();
     for path in paths {
         let path = path.unwrap().path();
+        // remove path from the path string
         let path = &path.to_str().unwrap()[path_len..];
         files_and_dirs.push(path.to_string());
     }
