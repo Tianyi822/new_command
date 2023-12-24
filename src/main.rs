@@ -74,38 +74,37 @@ impl LsCli {
     pub fn execute(&mut self) {
         self.set_status();
         println!("status: {}", self.get_status());
+
+        match self.get_status() {
+            0 => self.print_files_and_dirs(),
+            1 => todo!(),
+            2 => todo!(),
+            3 => todo!(),
+            4 => todo!(),
+            5 => todo!(),
+            6 => todo!(),
+            7 => todo!(),
+            _ => self.print_files_and_dirs(),
+        }
     }
-}
 
-// parse ls command
-fn _parse_ls_command() {
-    let list_cli = LsCli::parse();
-    println!("{:#?}", list_cli);
+    // just print files and dirs name in the path
+    fn print_files_and_dirs(&self) {
+        let path = self.path.as_ref().unwrap().to_str().unwrap();
 
-    // get path that user input
-    let path = list_cli.path.unwrap();
-    let path = path.to_str().unwrap();
-    println!("path: {}", path);
+        // store files and directories
+        let mut files_and_dirs = Vec::new();
 
-    let fds = _get_files_and_dirs(path);
-    println!("fds: {:?}", fds);
-}
+        // get files and directories from the path
+        let paths = std::fs::read_dir(path).unwrap();
+        for path in paths {
+            let path = path.unwrap().path();
+            let path = &path.to_str().unwrap();
+            files_and_dirs.push(path.to_string());
+        }
 
-// get files and directories in the path
-fn _get_files_and_dirs(path: &str) -> Vec<String> {
-    // get path length to remove it from the path string
-    let path_len = path.len();
-    let mut files_and_dirs = Vec::new();
-
-    // read files and directories from the path
-    let paths = std::fs::read_dir(path).unwrap();
-    for path in paths {
-        let path = path.unwrap().path();
-        // remove path from the path string
-        let path = &path.to_str().unwrap()[path_len..];
-        files_and_dirs.push(path.to_string());
+        println!("{:#?}", files_and_dirs);
     }
-    files_and_dirs
 }
 
 fn main() {
