@@ -26,13 +26,51 @@ struct LsCli {
     // 'ls'             => status-0 : default status
     // 'ls -l'          => status-1 : show details of files and directories
     // 'ls -a'          => status-2 : show hidden files and directories
-    // 'ls -al'         => status-3 : calculated by 1 | 2, it will show details of all hidden files and directories
     // 'ls -h'          => status-4 : set status to 4, but do nothing, don't ask why, Linux ls command also do nothing when get '-h' option
-    // 'ls -lh'         => status-5 : calculated by 1 | 4, it will show details of files and directories with human readable file sizes
-    // 'ls -alh'        => status-7 : calculated by 1 | 2 | 4, it will show details of all hidden files and directories with human readable file sizes
+    // 'ls -a -l'       => status-3 : calculated by 1 | 2, it will show details of all hidden files and directories
+    // 'ls -l -h'       => status-5 : calculated by 1 | 4, it will show details of files and directories with human readable file sizes
+    // 'ls -a -l -h'    => status-7 : calculated by 1 | 2 | 4, it will show details of all hidden files and directories with human readable file sizes
     // other command    => status-0 : default status
     // Above status were set by the parse function what we implemented in the impl code block.
+    //
+    // Attention: You must use #[arg(skip)] to skip the hidden field,
+    // otherwise it will be shown in help message, and even panic will appear in the program!!!
+    #[arg(skip)]
     status: u8,
+}
+
+impl LsCli {
+    // set status of the command
+    fn set_status(&mut self) {
+        // set status to 0 by default
+        self.status = 0;
+
+        // set status to 1 if get '-l' option
+        if self.long {
+            self.status |= 1;
+        }
+
+        // set status to 2 if get '-a' option
+        if self.all {
+            self.status |= 2;
+        }
+
+        // set status to 4 if get '-h' option
+        if self.human_readable {
+            self.status |= 4;
+        }
+    }
+
+    // get status of the command
+    fn get_status(&self) -> u8 {
+        self.status
+    }
+
+    // execute the command
+    pub fn execute(&mut self) {
+        self.set_status();
+        println!("status: {}", self.get_status());
+    }
 }
 
 // parse ls command
@@ -67,5 +105,6 @@ fn _get_files_and_dirs(path: &str) -> Vec<String> {
 }
 
 fn main() {
-    parse_ls_command();
+    let mut ls = LsCli::parse();
+    ls.execute();
 }
