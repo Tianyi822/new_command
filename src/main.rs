@@ -6,7 +6,7 @@ use clap::Parser;
     version = "0.0.1",
     about = "A simple command line tool written in Rust"
 )]
-struct ListCli {
+struct LsCli {
     #[arg(short = 'l', help = "show details of files and directories")]
     long: bool,
 
@@ -36,8 +36,8 @@ struct ListCli {
 }
 
 // parse ls command
-fn parse_ls_command() {
-    let list_cli = ListCli::parse();
+fn _parse_ls_command() {
+    let list_cli = LsCli::parse();
     println!("{:#?}", list_cli);
 
     // get path that user input
@@ -45,12 +45,12 @@ fn parse_ls_command() {
     let path = path.to_str().unwrap();
     println!("path: {}", path);
 
-    let fds = get_files_and_dirs(path);
+    let fds = _get_files_and_dirs(path);
     println!("fds: {:?}", fds);
 }
 
 // get files and directories in the path
-fn get_files_and_dirs(path: &str) -> Vec<String> {
+fn _get_files_and_dirs(path: &str) -> Vec<String> {
     // get path length to remove it from the path string
     let path_len = path.len();
     let mut files_and_dirs = Vec::new();
