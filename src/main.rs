@@ -1,5 +1,9 @@
 use clap::Parser;
 
+#[derive(Debug)]
+struct _FileInfo {
+}
+
 #[derive(Debug, Parser)]
 #[command(
     author = "Tianyi",
