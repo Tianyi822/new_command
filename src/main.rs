@@ -1,7 +1,15 @@
 use clap::Parser;
+use colored::*;
 
 #[derive(Debug)]
-struct _FileInfo {
+struct FileInfo {
+    permissions: String,
+    link: u32,
+    owner: String,
+    group: String,
+    size: u64,
+    modified_time: String,
+    name: String,
 }
 
 #[derive(Debug, Parser)]
@@ -25,6 +33,7 @@ struct LsCli {
 
     // This is a hidden field，it will not be shown in help message,
     // but it can be used to store the status of the command.
+    //
     // This field just like a state machine to show the status of the command,
     // and to instruct the program what to do next.
     // 'ls'             => status-0 : default status
@@ -44,33 +53,33 @@ struct LsCli {
 }
 
 impl LsCli {
-    // set status of the command
+    // Set status of the command
     fn set_status(&mut self) {
-        // set status to 0 by default
+        // Set status to 0 by default
         self.status = 0;
 
-        // set status to 1 if get '-l' option
+        // Set status to 1 if get '-l' option
         if self.long {
             self.status |= 1;
         }
 
-        // set status to 2 if get '-a' option
+        // Set status to 2 if get '-a' option
         if self.all {
             self.status |= 2;
         }
 
-        // set status to 4 if get '-h' option
+        // Set status to 4 if get '-h' option
         if self.human_readable {
             self.status |= 4;
         }
     }
 
-    // get status of the command
+    // Get status of the command
     fn get_status(&self) -> u8 {
         self.status
     }
 
-    // execute the command
+    // Execute the command
     pub fn execute(&mut self) {
         self.set_status();
         println!("status: {}", self.get_status());
@@ -88,22 +97,25 @@ impl LsCli {
         }
     }
 
-    // just print files and dirs name in the path
+    // Just print files and dirs name in the path
     fn print_files_and_dirs(&self) {
-        let path = self.path.as_ref().unwrap().to_str().unwrap();
-
-        // store files and directories
-        let mut files_and_dirs = Vec::new();
-
-        // get files and directories from the path
-        let paths = std::fs::read_dir(path).unwrap();
-        for path in paths {
-            let path = path.unwrap().path();
-            let path = &path.to_str().unwrap();
-            files_and_dirs.push(path.to_string());
+        // First check if the path is exist.
+        if self.path.is_none() {
+            let msg = format!("Error: path is not exist").red();
+            panic!("{}", msg);
         }
 
-        println!("{:#?}", files_and_dirs);
+        // Second check if the path is a file.
+        if self.path.as_ref().unwrap().is_file() {
+            // Get PathBuf of file.
+            let file = self.path.as_ref().unwrap();
+            // Get file metadata, such as file size, modified time, etc.
+            let metadata = file.metadata().unwrap();
+
+            let file_name = file.file_name().unwrap().to_str().unwrap();
+            let msg = format!("{} {}", file_name, metadata.len()).green();
+            println!("{}", msg);
+        }
     }
 }
 
