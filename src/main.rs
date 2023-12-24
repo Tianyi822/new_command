@@ -7,29 +7,32 @@ use clap::Parser;
     about = "A simple command line tool written in Rust"
 )]
 struct ListCli {
-    #[arg(
-        short = 'l',
-        help = "show details of files and directories",
-    )]
+    #[arg(short = 'l', help = "show details of files and directories")]
     long: bool,
 
-    #[arg(
-        short = 'a',
-        help = "show hidden files and directories",
-    )]
+    #[arg(short = 'a', help = "show hidden files and directories")]
     all: bool,
 
-    #[arg(
-        long = "hr",
-        help = "show human readable file sizes",
-    )]
+    #[arg(long = "hr", help = "show human readable file sizes")]
     human_readable: bool,
 
-    #[arg(
-        default_value = ".",
-        help = "set file or directory path",
-    )]
+    #[arg(default_value = ".", help = "set file or directory path")]
     path: Option<std::path::PathBuf>,
+
+    // This is a hidden field，it will not be shown in help message,
+    // but it can be used to store the status of the command.
+    // This field just like a state machine to show the status of the command,
+    // and to instruct the program what to do next.
+    // 'ls'             => status-0 : default status
+    // 'ls -l'          => status-1 : show details of files and directories
+    // 'ls -a'          => status-2 : show hidden files and directories
+    // 'ls -al'         => status-3 : calculated by 1 | 2, it will show details of all hidden files and directories
+    // 'ls -h'          => status-4 : set status to 4, but do nothing, don't ask why, Linux ls command also do nothing when get '-h' option
+    // 'ls -lh'         => status-5 : calculated by 1 | 4, it will show details of files and directories with human readable file sizes
+    // 'ls -alh'        => status-7 : calculated by 1 | 2 | 4, it will show details of all hidden files and directories with human readable file sizes
+    // other command    => status-0 : default status
+    // Above status were set by the parse function what we implemented in the impl code block.
+    status: u8,
 }
 
 // parse ls command
