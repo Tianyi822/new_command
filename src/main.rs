@@ -110,6 +110,7 @@ impl LsCli {
         };
     }
 
+    #[cfg(unix)]
     // Just print files and dirs name in the path
     fn get_files_and_dirs(&mut self) {
         // Check if the path is exist.
@@ -136,6 +137,7 @@ impl LsCli {
         }
     }
 
+    #[cfg(unix)]
     // Get file info, such as file size, modified time, etc.
     fn get_file_info(&self, path_buf: &std::path::PathBuf) -> FileInfo {
         // Get file info, such as file size, modified time, etc.
@@ -179,6 +181,7 @@ impl LsCli {
         fi
     }
 
+    #[cfg(unix)]
     // Analysis file mode from metadata.
     fn analysis_mode(&self, metadata: &fs::Metadata) -> String {
         // Get file permissions.
@@ -214,6 +217,7 @@ impl LsCli {
         mode_str
     }
 
+    #[cfg(unix)]
     // Turn permission number to string.
     // For example: 0o755 => rwxr-xr-x
     fn turn_permission_num_to_str(&self, num: u32) -> String {
