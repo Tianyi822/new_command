@@ -125,11 +125,15 @@ impl LsCli {
             // If it is a file, just get file info and return.
             files.push(self.get_file_info(path_buf));
             return files;
+        } else {
+            // If it is a directory, get all files and directories in it.
+            // And store them to the vec.
+            let paths = fs::read_dir(path_buf).unwrap();
+            for path in paths {
+                let path = path.unwrap().path();
+                files.push(self.get_file_info(&path));
+            }
         }
-
-        // If it is a directory, get all files and directories in it.
-        // And store them to the vec.
-        // if self.path.as_ref().unwrap().is_dir() {}
 
         files
     }
@@ -173,7 +177,6 @@ impl LsCli {
             modified_time: modify_time,
             name: file_name,
         };
-        println!("{:#?}", fi);
 
         fi
     }
