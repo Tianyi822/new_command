@@ -94,48 +94,46 @@ impl LsCli {
     // Execute the command
     pub fn execute(&mut self) {
         self.set_status();
+        // Get files and directories info from the target path, and store them to the vec.
+        self.get_files_and_dirs();
 
         let _v = match self.get_status() {
-            0 => self.get_files_and_dirs(),
-            1 => todo!(),
-            2 => todo!(),
-            3 => todo!(),
-            4 => todo!(),
-            5 => todo!(),
-            6 => todo!(),
-            7 => todo!(),
-            _ => self.get_files_and_dirs(),
+            0 => println!("do nothing at now"),
+            1 => println!("do nothing at now"),
+            2 => println!("do nothing at now"),
+            3 => println!("do nothing at now"),
+            4 => println!("do nothing at now"),
+            5 => println!("do nothing at now"),
+            6 => println!("do nothing at now"),
+            7 => println!("do nothing at now"),
+            _ => println!("do nothing at now"),
         };
     }
 
     // Just print files and dirs name in the path
-    fn get_files_and_dirs(&self) -> Vec<FileInfo> {
+    fn get_files_and_dirs(&mut self) {
         // Check if the path is exist.
         if self.path.is_none() {
             let msg = format!("Error: path is not exist").red();
             panic!("{}", msg);
         }
 
-        let mut files = Vec::new();
         // Get PathBuf of file.
         let path_buf: &std::path::PathBuf = self.path.as_ref().unwrap();
 
         // Check if the path is a file.
         if !path_buf.is_dir() {
             // If it is a file, just get file info and return.
-            files.push(self.get_file_info(path_buf));
-            return files;
+            self.files.push(self.get_file_info(path_buf));
         } else {
             // If it is a directory, get all files and directories in it.
             // And store them to the vec.
             let paths = fs::read_dir(path_buf).unwrap();
             for path in paths {
                 let path = path.unwrap().path();
-                files.push(self.get_file_info(&path));
+                self.files.push(self.get_file_info(&path));
             }
         }
-
-        files
     }
 
     // Get file info, such as file size, modified time, etc.
