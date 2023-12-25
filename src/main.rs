@@ -33,7 +33,7 @@ struct LsCli {
     #[arg(short = 'a', help = "show hidden files and directories")]
     all: bool,
 
-    #[arg(long = "hr", help = "show human readable file sizes")]
+    #[arg(short = 'H', help = "show human readable file sizes")]
     human_readable: bool,
 
     #[arg(default_value = ".", help = "set file or directory path")]
@@ -47,10 +47,10 @@ struct LsCli {
     // 'ls'             => status-0 : default status
     // 'ls -l'          => status-1 : show details of files and directories
     // 'ls -a'          => status-2 : show hidden files and directories
-    // 'ls --hr'        => status-4 : set status to 4, but do nothing, don't ask why, Linux ls command also do nothing when get '-h' option
+    // 'ls -H'          => status-4 : set status to 4, but do nothing, don't ask why, Linux ls command also do nothing when get '-h' option
     // 'ls -a -l'       => status-3 : calculated by 1 | 2, it will show details of all hidden files and directories
-    // 'ls -l --hr'     => status-5 : calculated by 1 | 4, it will show details of files and directories with human readable file sizes
-    // 'ls -a -l --hr'  => status-7 : calculated by 1 | 2 | 4, it will show details of all hidden files and directories with human readable file sizes
+    // 'ls -l -H'       => status-5 : calculated by 1 | 4, it will show details of files and directories with human readable file sizes
+    // 'ls -a -l -H'    => status-7 : calculated by 1 | 2 | 4, it will show details of all hidden files and directories with human readable file sizes
     // other command    => status-0 : default status
     // Above status were set by the parse function what we implemented in the impl code block.
     //
@@ -80,7 +80,7 @@ impl LsCli {
             self.status |= 2;
         }
 
-        // Set status to 4 if get '-h' option
+        // Set status to 4 if get '-H' option
         if self.human_readable {
             self.status |= 4;
         }
