@@ -111,34 +111,21 @@ impl LsCli {
         self.get_files_and_dirs();
 
         let _v = match self.get_status() {
-            0 => self.show_names(),
-            1 => self.show_infos(),
-            2 => self.show_names(),
-            3 => self.show_infos(),
-            4 => println!("do nothing at now"),
-            5 => println!("do nothing at now"),
-            6 => println!("do nothing at now"),
-            7 => println!("do nothing at now"),
+            0 | 2 | 4 => self.show_names(),
+            1 | 3 | 5 | 7 => self.show_infos(),
             _ => self.show_names(),
         };
     }
 
-    // If don't get any option or use other options that don't define, just show non-hidden files name.
+    // If don't get any option or use other options that don't define,
+    // just show non-hidden files name.
     fn show_names(&self) {
         for file in self.files.iter() {
             if !self.all && file.is_hidden {
                 continue;
             }
 
-            match file.file_type {
-                FileType::File => print!("{:<20}", file.name),
-                FileType::Dir => print!("{:<20}", file.name),
-                FileType::Link => print!("{:<20}", file.name),
-                FileType::CharDevice => print!("{:<20}", file.name),
-                FileType::BlockDevice => print!("{:<20}", file.name),
-                FileType::Fifo => print!("{:<20}", file.name),
-                FileType::Socket => print!("{:<20}", file.name),
-            }
+            print!("{:<20}", self.color_file_names(&file));
         }
         // Add a new line at the end of the output.
         println!();
@@ -151,17 +138,71 @@ impl LsCli {
                 continue;
             }
 
+            let size = if self.human_readable {
+                self.human_readable_size(file.size)
+            } else {
+                file.size.to_string()
+            };
+
+            let file_name_with_color = self.color_file_names(&file);
+
             println!(
                 "{} {:>3} {:>8} {:>8} {:>8} {:>20} {}",
                 file.permissions,
                 file.link,
                 file.owner,
                 file.group,
-                file.size,
+                size,
                 file.modified_time,
-                file.name
+                file_name_with_color
             );
         }
+    }
+
+    // Color file name by file type when show file names.
+    fn color_file_names(&self, file: &FileInfo) -> ColoredString {
+        match file.file_type {
+            FileType::File => file.name.white(),
+            FileType::Dir => file.name.cyan(),
+            FileType::Link => file.name.blue(),
+            FileType::CharDevice => file.name.green(),
+            FileType::BlockDevice => file.name.green(),
+            FileType::Fifo => file.name.green(),
+            FileType::Socket => file.name.green(),
+        }
+    }
+
+    // Turn file size to human readable size.
+    fn human_readable_size(&self, size: u64) -> String {
+        let mut size = size as f64;
+        let mut unit = "B";
+
+        if size > 1024.0 {
+            size /= 1024.0;
+            unit = "K";
+        }
+
+        if size > 1024.0 {
+            size /= 1024.0;
+            unit = "M";
+        }
+
+        if size > 1024.0 {
+            size /= 1024.0;
+            unit = "G";
+        }
+
+        if size > 1024.0 {
+            size /= 1024.0;
+            unit = "T";
+        }
+
+        if size > 1024.0 {
+            size /= 1024.0;
+            unit = "P";
+        }
+
+        format!("{:.2}{}", size, unit)
     }
 
     #[cfg(unix)]
@@ -200,7 +241,11 @@ impl LsCli {
         let metadata = path_buf.metadata().unwrap();
 
         // Get file basic info include: permissions, type, name and is not hidden.
-        let file_basic_info = self.analysis_mode(&path_buf);
+        let file_permission_and_type = self.analysis_mode(&metadata);
+
+        // Get file name and judge if it is hidden.
+        let file_name = path_buf.file_name().unwrap().to_string_lossy().to_string();
+        let is_hidden = file_name.starts_with(".");
 
         // Get file link number.
         let link_num = metadata.nlink();
@@ -223,15 +268,15 @@ impl LsCli {
 
         // Store these infos to FileInfo struct and add it to vec.
         let fi = FileInfo {
-            permissions: file_basic_info.0,
-            file_type: file_basic_info.1,
+            permissions: file_permission_and_type.0,
+            file_type: file_permission_and_type.1,
             link: link_num,
             owner: owner_name,
             group: group_name,
             size: metadata.len(),
             modified_time: modify_time,
-            name: file_basic_info.2,
-            is_hidden: file_basic_info.3,
+            name: file_name,
+            is_hidden,
         };
 
         fi
@@ -239,9 +284,8 @@ impl LsCli {
 
     #[cfg(unix)]
     // Analysis file mode from metadata.
-    fn analysis_mode(&self, path_buf: &std::path::PathBuf) -> (String, FileType, String, bool) {
+    fn analysis_mode(&self, metadata: &fs::Metadata) -> (String, FileType) {
         // Get file permissions.
-        let metadata = path_buf.metadata().unwrap();
         let mode: u32 = metadata.permissions().mode();
 
         // Turn permission number to string.
@@ -251,75 +295,33 @@ impl LsCli {
             self.turn_permission_num_to_str((mode >> 3) & 0o007),
             self.turn_permission_num_to_str(mode & 0o007)
         );
-        // Get file name.
-        let file_name = path_buf.file_name().unwrap().to_string_lossy().to_string();
 
         // Get file type, and add it to the msg.
         let file_type = metadata.file_type();
         match file_type {
             _ if file_type.is_dir() => {
-                return (
-                    format!("d{permission_str}"),
-                    FileType::Dir,
-                    file_name.cyan().to_string(),
-                    file_name.starts_with("."),
-                );
+                return (format!("d{permission_str}"), FileType::Dir);
             }
             _ if file_type.is_file() => {
-                return (
-                    format!("-{permission_str}"),
-                    FileType::File,
-                    file_name.white().to_string(),
-                    file_name.starts_with("."),
-                );
+                return (format!("-{permission_str}"), FileType::File);
             }
             _ if file_type.is_symlink() => {
-                return (
-                    format!("l{permission_str}"),
-                    FileType::Link,
-                    file_name.blue().to_string(),
-                    file_name.starts_with("."),
-                );
+                return (format!("l{permission_str}"), FileType::Link);
             }
             _ if file_type.is_char_device() => {
-                return (
-                    format!("d{permission_str}"),
-                    FileType::CharDevice,
-                    file_name.yellow().to_string(),
-                    file_name.starts_with("."),
-                );
+                return (format!("d{permission_str}"), FileType::CharDevice);
             }
             _ if file_type.is_block_device() => {
-                return (
-                    format!("b{permission_str}"),
-                    FileType::BlockDevice,
-                    file_name.yellow().to_string(),
-                    file_name.starts_with("."),
-                );
+                return (format!("b{permission_str}"), FileType::BlockDevice);
             }
             _ if file_type.is_fifo() => {
-                return (
-                    format!("p{permission_str}"),
-                    FileType::Fifo,
-                    file_name.yellow().to_string(),
-                    file_name.starts_with("."),
-                );
+                return (format!("p{permission_str}"), FileType::Fifo);
             }
             _ if file_type.is_socket() => {
-                return (
-                    format!("s{permission_str}"),
-                    FileType::Socket,
-                    file_name.yellow().to_string(),
-                    file_name.starts_with("."),
-                );
+                return (format!("s{permission_str}"), FileType::Socket);
             }
             _ => {
-                return (
-                    format!("?{permission_str}"),
-                    FileType::File,
-                    file_name.white().to_string(),
-                    file_name.starts_with("."),
-                );
+                return (format!("?{permission_str}"), FileType::File);
             }
         }
     }
