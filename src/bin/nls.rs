@@ -125,8 +125,18 @@ impl LsCli {
     // If don't get any option or use any options that don't define, just show file name.
     fn show_default(&self) {
         for file in self.files.iter() {
-            println!("{}", file.name.red());
+            match file.file_type {
+                FileType::File => print!("{:<15}", file.name),
+                FileType::Dir => print!("{:<15}", file.name),
+                FileType::Link => print!("{:<15}", file.name),
+                FileType::CharDevice => print!("{:<15}", file.name),
+                FileType::BlockDevice => print!("{:<15}", file.name),
+                FileType::Fifo => print!("{:<15}", file.name),
+                FileType::Socket => print!("{:<15}", file.name),
+            }
         }
+        // Add a new line at the end of the output.
+        println!();
     }
 
     #[cfg(unix)]
@@ -164,22 +174,31 @@ impl LsCli {
         // Get file info, such as file size, modified time, etc.
         let metadata = path_buf.metadata().unwrap();
 
+        // Get file name.
+        let mut file_name = path_buf.file_name().unwrap().to_string_lossy().to_string();
+
         // Get file type.
         // Get file type, and add it to the msg.
         let file_type = metadata.file_type();
         let mut ft: FileType = FileType::File;
         if file_type.is_dir() {
             ft = FileType::Dir;
+            file_name = file_name.cyan().to_string();
         } else if file_type.is_symlink() {
             ft = FileType::Link;
+            file_name = file_name.blue().to_string();
         } else if file_type.is_char_device() {
             ft = FileType::CharDevice;
+            file_name = file_name.yellow().to_string();
         } else if file_type.is_block_device() {
             ft = FileType::BlockDevice;
+            file_name = file_name.yellow().to_string();
         } else if file_type.is_fifo() {
             ft = FileType::Fifo;
+            file_name = file_name.yellow().to_string();
         } else if file_type.is_socket() {
             ft = FileType::Socket;
+            file_name = file_name.yellow().to_string();
         }
 
         // Get file permissions.
@@ -203,9 +222,6 @@ impl LsCli {
         let group_name = get_group_by_gid(gid)
             .map(|g| g.name().to_string_lossy().into_owned())
             .unwrap_or_else(|| "Unknown".to_string());
-
-        // Get file name.
-        let file_name = path_buf.file_name().unwrap().to_string_lossy().to_string();
 
         // Store these infos to FileInfo struct and add it to vec.
         let fi = FileInfo {
