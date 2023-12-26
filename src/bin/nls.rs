@@ -30,6 +30,7 @@ struct FileInfo {
     size: u64,
     modified_time: String,
     name: String,
+    is_hidden: bool,
 }
 
 #[derive(Debug, Parser)]
@@ -122,9 +123,13 @@ impl LsCli {
         };
     }
 
-    // If don't get any option or use any options that don't define, just show file name.
+    // If don't get any option or use other options that don't define, just show non-hidden files name.
     fn show_default(&self) {
         for file in self.files.iter() {
+            if file.is_hidden {
+                continue;
+            }
+
             match file.file_type {
                 FileType::File => print!("{:<20}", file.name),
                 FileType::Dir => print!("{:<20}", file.name),
@@ -174,8 +179,8 @@ impl LsCli {
         // Get file info, such as file size, modified time, etc.
         let metadata = path_buf.metadata().unwrap();
 
-        // Get file permissions.
-        let file_permission_and_type_and_name = self.analysis_mode(&path_buf);
+        // Get file basic info include: permissions, type, name and is not hidden.
+        let file_basic_info = self.analysis_mode(&path_buf);
 
         // Get file link number.
         let link_num = metadata.nlink();
@@ -198,14 +203,15 @@ impl LsCli {
 
         // Store these infos to FileInfo struct and add it to vec.
         let fi = FileInfo {
-            permissions: file_permission_and_type_and_name.0,
-            file_type: file_permission_and_type_and_name.1,
+            permissions: file_basic_info.0,
+            file_type: file_basic_info.1,
             link: link_num,
             owner: owner_name,
             group: group_name,
             size: metadata.len(),
             modified_time: modify_time,
-            name: file_permission_and_type_and_name.2,
+            name: file_basic_info.2,
+            is_hidden: file_basic_info.3,
         };
 
         fi
@@ -213,7 +219,7 @@ impl LsCli {
 
     #[cfg(unix)]
     // Analysis file mode from metadata.
-    fn analysis_mode(&self, path_buf: &std::path::PathBuf) -> (String, FileType, String) {
+    fn analysis_mode(&self, path_buf: &std::path::PathBuf) -> (String, FileType, String, bool) {
         // Get file permissions.
         let metadata = path_buf.metadata().unwrap();
         let mode: u32 = metadata.permissions().mode();
@@ -236,16 +242,23 @@ impl LsCli {
                     format!("d{permission_str}"),
                     FileType::Dir,
                     file_name.cyan().to_string(),
+                    file_name.starts_with("."),
                 );
             }
             _ if file_type.is_file() => {
-                return (format!("-{permission_str}"), FileType::File, file_name);
+                return (
+                    format!("-{permission_str}"),
+                    FileType::File,
+                    file_name.white().to_string(),
+                    file_name.starts_with("."),
+                );
             }
             _ if file_type.is_symlink() => {
                 return (
                     format!("l{permission_str}"),
                     FileType::Link,
                     file_name.blue().to_string(),
+                    file_name.starts_with("."),
                 );
             }
             _ if file_type.is_char_device() => {
@@ -253,6 +266,7 @@ impl LsCli {
                     format!("d{permission_str}"),
                     FileType::CharDevice,
                     file_name.yellow().to_string(),
+                    file_name.starts_with("."),
                 );
             }
             _ if file_type.is_block_device() => {
@@ -260,6 +274,7 @@ impl LsCli {
                     format!("b{permission_str}"),
                     FileType::BlockDevice,
                     file_name.yellow().to_string(),
+                    file_name.starts_with("."),
                 );
             }
             _ if file_type.is_fifo() => {
@@ -267,6 +282,7 @@ impl LsCli {
                     format!("p{permission_str}"),
                     FileType::Fifo,
                     file_name.yellow().to_string(),
+                    file_name.starts_with("."),
                 );
             }
             _ if file_type.is_socket() => {
@@ -274,10 +290,16 @@ impl LsCli {
                     format!("s{permission_str}"),
                     FileType::Socket,
                     file_name.yellow().to_string(),
+                    file_name.starts_with("."),
                 );
             }
             _ => {
-                return (format!("?{permission_str}"), FileType::File, file_name);
+                return (
+                    format!("?{permission_str}"),
+                    FileType::File,
+                    file_name.white().to_string(),
+                    file_name.starts_with("."),
+                );
             }
         }
     }
