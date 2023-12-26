@@ -302,7 +302,7 @@ impl LsCli {
         let mode: u32 = metadata.permissions().mode();
 
         // Turn permission number to string.
-        let permission_str = format!(
+        let perms_str = format!(
             "{}{}{}",
             self.turn_permission_num_to_str((mode >> 6) & 0o007),
             self.turn_permission_num_to_str((mode >> 3) & 0o007),
@@ -311,32 +311,18 @@ impl LsCli {
 
         // Get file type, and add it to the msg.
         let file_type = metadata.file_type();
-        match file_type {
-            _ if file_type.is_dir() => {
-                return (format!("d{permission_str}"), FileType::Dir);
-            }
-            _ if file_type.is_file() => {
-                return (format!("-{permission_str}"), FileType::File);
-            }
-            _ if file_type.is_symlink() => {
-                return (format!("l{permission_str}"), FileType::Link);
-            }
-            _ if file_type.is_char_device() => {
-                return (format!("d{permission_str}"), FileType::CharDevice);
-            }
-            _ if file_type.is_block_device() => {
-                return (format!("b{permission_str}"), FileType::BlockDevice);
-            }
-            _ if file_type.is_fifo() => {
-                return (format!("p{permission_str}"), FileType::Fifo);
-            }
-            _ if file_type.is_socket() => {
-                return (format!("s{permission_str}"), FileType::Socket);
-            }
-            _ => {
-                return (format!("?{permission_str}"), FileType::File);
-            }
-        }
+        let result = match file_type {
+            _ if file_type.is_dir() => (format!("d{perms_str}"), FileType::Dir),
+            _ if file_type.is_file() => (format!("-{perms_str}"), FileType::File),
+            _ if file_type.is_symlink() => (format!("l{perms_str}"), FileType::Link),
+            _ if file_type.is_char_device() => (format!("c{perms_str}"), FileType::CharDevice),
+            _ if file_type.is_block_device() => (format!("b{perms_str}"), FileType::BlockDevice),
+            _ if file_type.is_fifo() => (format!("p{perms_str}"), FileType::Fifo),
+            _ if file_type.is_socket() => (format!("s{perms_str}"), FileType::Socket),
+            _ => (format!("?{perms_str}"), FileType::File),
+        };
+
+        result
     }
 
     #[cfg(unix)]
