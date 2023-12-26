@@ -112,7 +112,7 @@ impl LsCli {
 
         let _v = match self.get_status() {
             0 => self.show_default(),
-            1 => println!("do nothing at now"),
+            1 => self.show_list(),
             2 => println!("do nothing at now"),
             3 => println!("do nothing at now"),
             4 => println!("do nothing at now"),
@@ -142,6 +142,26 @@ impl LsCli {
         }
         // Add a new line at the end of the output.
         println!();
+    }
+
+    // Show details of files and directories
+    fn show_list(&self) {
+        for file in self.files.iter() {
+            if !self.all && file.is_hidden {
+                continue;
+            }
+
+            println!(
+                "{} {:>3} {:>8} {:>8} {:>8} {:>20} {}",
+                file.permissions,
+                file.link,
+                file.owner,
+                file.group,
+                file.size,
+                file.modified_time,
+                file.name
+            );
+        }
     }
 
     #[cfg(unix)]
