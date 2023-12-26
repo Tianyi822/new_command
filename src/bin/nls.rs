@@ -178,10 +178,9 @@ impl LsCli {
             FileType::File => file.name.white(),
             FileType::Dir => file.name.cyan(),
             FileType::Link => file.name.blue(),
-            FileType::CharDevice => file.name.green(),
-            FileType::BlockDevice => file.name.green(),
-            FileType::Fifo => file.name.green(),
-            FileType::Socket => file.name.green(),
+            FileType::CharDevice | FileType::BlockDevice | FileType::Fifo | FileType::Socket => {
+                file.name.green()
+            }
         }
     }
 
@@ -234,6 +233,7 @@ impl LsCli {
         if !path_buf.is_dir() {
             // If it is a file, just get file info and return.
             self.files.push(self.get_file_info(path_buf));
+            return;
         } else {
             // If it is a directory, get all files and directories in it.
             // And store them to the vec.
@@ -244,7 +244,19 @@ impl LsCli {
             }
         }
 
-        self.files.sort_by(|f1, f2| f1.name.cmp(&f2.name));
+        // Sort by option
+        if self.sort_by_size {
+            self.files.sort_by(|f1, f2| f1.size.cmp(&f2.size));
+        } else if self.sort_by_time {
+            self.files.sort_by(|f1, f2: &FileInfo| f1.modified_time.cmp(&f2.modified_time));
+        } else {
+            self.files.sort_by(|f1, f2| f1.name.cmp(&f2.name));
+        }
+
+        // Reverse sort if get '-r' option.
+        if self.resort {
+            self.files.reverse();
+        }
     }
 
     #[cfg(unix)]
