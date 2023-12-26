@@ -43,14 +43,27 @@ struct LsCli {
     #[arg(short = 'l', help = "show details of files and directories")]
     long: bool,
 
-    #[arg(short = 'a', help = "show hidden files and directories")]
+    #[arg(short = 'a', long = "all", help = "show hidden files and directories")]
     all: bool,
 
-    #[arg(short = 'H', help = "show human readable file sizes")]
+    #[arg(
+        short = 'H',
+        long = "human-readable",
+        help = "show human readable file sizes"
+    )]
     human_readable: bool,
 
     #[arg(default_value = ".", help = "set file or directory path")]
     path: Option<std::path::PathBuf>,
+
+    #[arg(short = 's', long = "size", help = "sort by file size")]
+    sort_by_size: bool,
+
+    #[arg(short = 't', long = "time", help = "sort by modified time")]
+    sort_by_time: bool,
+
+    #[arg(short = 'r', long = "reverse", help = "reverse sort")]
+    resort: bool,
 
     // This is a hidden field，it will not be shown in help message,
     // but it can be used to store the status of the command.
