@@ -60,8 +60,8 @@ struct LsCli {
     // 'ls'             => status-0 : default status
     // 'ls -l'          => status-1 : show details of files and directories
     // 'ls -a'          => status-2 : show hidden files and directories
-    // 'ls -H'          => status-4 : set status to 4, but do nothing, don't ask why, Linux ls command also do nothing when get '-h' option
     // 'ls -a -l'       => status-3 : calculated by 1 | 2, it will show details of all hidden files and directories
+    // 'ls -H'          => status-4 : set status to 4, but do nothing, don't ask why, Linux ls command also do nothing when get '-h' option
     // 'ls -l -H'       => status-5 : calculated by 1 | 4, it will show details of files and directories with human readable file sizes
     // 'ls -a -l -H'    => status-7 : calculated by 1 | 2 | 4, it will show details of all hidden files and directories with human readable file sizes
     // other command    => status-0 : default status
@@ -111,22 +111,22 @@ impl LsCli {
         self.get_files_and_dirs();
 
         let _v = match self.get_status() {
-            0 => self.show_default(),
-            1 => self.show_list(),
-            2 => println!("do nothing at now"),
-            3 => println!("do nothing at now"),
+            0 => self.show_names(),
+            1 => self.show_infos(),
+            2 => self.show_names(),
+            3 => self.show_infos(),
             4 => println!("do nothing at now"),
             5 => println!("do nothing at now"),
             6 => println!("do nothing at now"),
             7 => println!("do nothing at now"),
-            _ => self.show_default(),
+            _ => self.show_names(),
         };
     }
 
     // If don't get any option or use other options that don't define, just show non-hidden files name.
-    fn show_default(&self) {
+    fn show_names(&self) {
         for file in self.files.iter() {
-            if file.is_hidden {
+            if !self.all && file.is_hidden {
                 continue;
             }
 
@@ -145,7 +145,7 @@ impl LsCli {
     }
 
     // Show details of files and directories
-    fn show_list(&self) {
+    fn show_infos(&self) {
         for file in self.files.iter() {
             if !self.all && file.is_hidden {
                 continue;
