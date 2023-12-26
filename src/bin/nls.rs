@@ -126,13 +126,13 @@ impl LsCli {
     fn show_default(&self) {
         for file in self.files.iter() {
             match file.file_type {
-                FileType::File => print!("{:<15}", file.name),
-                FileType::Dir => print!("{:<15}", file.name),
-                FileType::Link => print!("{:<15}", file.name),
-                FileType::CharDevice => print!("{:<15}", file.name),
-                FileType::BlockDevice => print!("{:<15}", file.name),
-                FileType::Fifo => print!("{:<15}", file.name),
-                FileType::Socket => print!("{:<15}", file.name),
+                FileType::File => print!("{:<20}", file.name),
+                FileType::Dir => print!("{:<20}", file.name),
+                FileType::Link => print!("{:<20}", file.name),
+                FileType::CharDevice => print!("{:<20}", file.name),
+                FileType::BlockDevice => print!("{:<20}", file.name),
+                FileType::Fifo => print!("{:<20}", file.name),
+                FileType::Socket => print!("{:<20}", file.name),
             }
         }
         // Add a new line at the end of the output.
@@ -174,35 +174,8 @@ impl LsCli {
         // Get file info, such as file size, modified time, etc.
         let metadata = path_buf.metadata().unwrap();
 
-        // Get file name.
-        let mut file_name = path_buf.file_name().unwrap().to_string_lossy().to_string();
-
-        // Get file type.
-        // Get file type, and add it to the msg.
-        let file_type = metadata.file_type();
-        let mut ft: FileType = FileType::File;
-        if file_type.is_dir() {
-            ft = FileType::Dir;
-            file_name = file_name.cyan().to_string();
-        } else if file_type.is_symlink() {
-            ft = FileType::Link;
-            file_name = file_name.blue().to_string();
-        } else if file_type.is_char_device() {
-            ft = FileType::CharDevice;
-            file_name = file_name.yellow().to_string();
-        } else if file_type.is_block_device() {
-            ft = FileType::BlockDevice;
-            file_name = file_name.yellow().to_string();
-        } else if file_type.is_fifo() {
-            ft = FileType::Fifo;
-            file_name = file_name.yellow().to_string();
-        } else if file_type.is_socket() {
-            ft = FileType::Socket;
-            file_name = file_name.yellow().to_string();
-        }
-
         // Get file permissions.
-        let permission = self.analysis_mode(&metadata);
+        let file_permission_and_type_and_name = self.analysis_mode(&path_buf);
 
         // Get file link number.
         let link_num = metadata.nlink();
@@ -225,14 +198,14 @@ impl LsCli {
 
         // Store these infos to FileInfo struct and add it to vec.
         let fi = FileInfo {
-            file_type: ft,
-            permissions: permission,
+            permissions: file_permission_and_type_and_name.0,
+            file_type: file_permission_and_type_and_name.1,
             link: link_num,
             owner: owner_name,
             group: group_name,
             size: metadata.len(),
             modified_time: modify_time,
-            name: file_name,
+            name: file_permission_and_type_and_name.2,
         };
 
         fi
@@ -240,20 +213,73 @@ impl LsCli {
 
     #[cfg(unix)]
     // Analysis file mode from metadata.
-    fn analysis_mode(&self, metadata: &fs::Metadata) -> String {
+    fn analysis_mode(&self, path_buf: &std::path::PathBuf) -> (String, FileType, String) {
         // Get file permissions.
+        let metadata = path_buf.metadata().unwrap();
         let mode: u32 = metadata.permissions().mode();
 
-        let owner_permission = self.turn_permission_num_to_str((mode >> 6) & 0o007);
-        let group_permission = self.turn_permission_num_to_str((mode >> 3) & 0o007);
-        let other_permission = self.turn_permission_num_to_str(mode & 0o007);
-
-        let mode_str = format!(
+        // Turn permission number to string.
+        let permission_str = format!(
             "{}{}{}",
-            owner_permission, group_permission, other_permission
+            self.turn_permission_num_to_str((mode >> 6) & 0o007),
+            self.turn_permission_num_to_str((mode >> 3) & 0o007),
+            self.turn_permission_num_to_str(mode & 0o007)
         );
+        // Get file name.
+        let file_name = path_buf.file_name().unwrap().to_string_lossy().to_string();
 
-        mode_str
+        // Get file type, and add it to the msg.
+        let file_type = metadata.file_type();
+        match file_type {
+            _ if file_type.is_dir() => {
+                return (
+                    format!("d{permission_str}"),
+                    FileType::Dir,
+                    file_name.cyan().to_string(),
+                );
+            }
+            _ if file_type.is_file() => {
+                return (format!("-{permission_str}"), FileType::File, file_name);
+            }
+            _ if file_type.is_symlink() => {
+                return (
+                    format!("l{permission_str}"),
+                    FileType::Link,
+                    file_name.blue().to_string(),
+                );
+            }
+            _ if file_type.is_char_device() => {
+                return (
+                    format!("d{permission_str}"),
+                    FileType::CharDevice,
+                    file_name.yellow().to_string(),
+                );
+            }
+            _ if file_type.is_block_device() => {
+                return (
+                    format!("b{permission_str}"),
+                    FileType::BlockDevice,
+                    file_name.yellow().to_string(),
+                );
+            }
+            _ if file_type.is_fifo() => {
+                return (
+                    format!("p{permission_str}"),
+                    FileType::Fifo,
+                    file_name.yellow().to_string(),
+                );
+            }
+            _ if file_type.is_socket() => {
+                return (
+                    format!("s{permission_str}"),
+                    FileType::Socket,
+                    file_name.yellow().to_string(),
+                );
+            }
+            _ => {
+                return (format!("?{permission_str}"), FileType::File, file_name);
+            }
+        }
     }
 
     #[cfg(unix)]
