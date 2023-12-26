@@ -331,8 +331,8 @@ impl LsCli {
     fn turn_permission_num_to_str(&self, num: u32) -> String {
         let mut result = String::from("");
 
-        if num & 1 == 1 {
-            result.push_str("x");
+        if num & 4 == 4 {
+            result.push_str("r");
         } else {
             result.push_str("-");
         }
@@ -343,8 +343,8 @@ impl LsCli {
             result.push_str("-");
         }
 
-        if num & 4 == 4 {
-            result.push_str("r");
+        if num & 1 == 1 {
+            result.push_str("x");
         } else {
             result.push_str("-");
         }
