@@ -37,7 +37,7 @@ struct FileInfo {
 #[command(
     author = "Tianyi",
     version = "0.0.1",
-    about = "A simple command line tool written in Rust"
+    about = "A new command line tool written in Rust"
 )]
 struct LsCli {
     #[arg(short = 'l', help = "show details of files and directories")]
