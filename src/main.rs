@@ -9,7 +9,7 @@ use clap::Parser;
 use colored::*;
 use users::{get_group_by_gid, get_user_by_uid};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 struct FileInfo {
     permissions: String,
     link: u64,
@@ -135,6 +135,8 @@ impl LsCli {
                 self.files.push(self.get_file_info(&path));
             }
         }
+
+        self.files.sort_by(|f1, f2| f1.name.cmp(&f2.name));
     }
 
     #[cfg(unix)]
