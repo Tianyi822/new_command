@@ -9,6 +9,10 @@ edition = "2021"
 name = "nls"
 path = "src/bin/nls.rs"
 
+[[bin]]
+name = "nhistory"
+path = "src/bin/nhistory.rs"
+
 [dependencies]
 clap = { version = "4.4", features = ["derive"] }
 colored = "2" # 命令终端多彩显示
