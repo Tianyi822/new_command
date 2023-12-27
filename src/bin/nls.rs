@@ -65,8 +65,20 @@ struct LsCli {
     #[arg(short = 'r', long = "reverse", help = "reverse sort")]
     resort: bool,
 
-    #[arg(short = 't', long = "tree", help = "show files and directories as a tree")]
+    #[arg(
+        short = 'T',
+        long = "tree",
+        help = "show files and directories as a tree"
+    )]
     tree: bool,
+
+    #[arg(
+        short = 'd',
+        long = "depth",
+        help = "set the depth of the tree, default is 10",
+        default_value = "10",
+    )]
+    depth: Option<u8>,
 
     // This is a hidden field，it will not be shown in help message,
     // but it can be used to store the status of the command.
@@ -114,6 +126,10 @@ impl LsCli {
         if self.human_readable {
             self.status |= 4;
         }
+
+        if self.tree {
+            self.status |= 8;
+        }
     }
 
     // Get status of the command
@@ -123,6 +139,17 @@ impl LsCli {
 
     // Execute the command
     pub fn execute(&mut self) {
+        // Check if the path is exist.
+        if self.path.is_none() {
+            let msg = format!("Error: path is not exist").red();
+            panic!("{}", msg);
+        } else {
+            // If the path is exist, get the canonical path
+            // Convert the path to an absolute path because the path may be a relative path.
+            // The relative path may cause panic when use fs::PathBuf.file_name() would return None.
+            self.path = Some(self.path.as_ref().unwrap().canonicalize().unwrap());
+        }
+
         self.set_status();
         // Get files and directories info from the target path, and store them to the vec.
         self.get_files_and_dirs();
@@ -130,8 +157,45 @@ impl LsCli {
         let _v = match self.get_status() {
             0 | 2 | 4 => self.show_names(),
             1 | 3 | 5 | 7 => self.show_infos(),
+            8 => self.show_as_tree(),
             _ => self.show_names(),
         };
+    }
+
+    // Show files and directories as a tree.
+    fn show_as_tree(&mut self) {
+        let cur_path = self.path.as_ref().unwrap();
+        self.show_as_tree_recursively(cur_path, 0);
+    }
+
+    // Show files and directories as a tree recursively.
+    fn show_as_tree_recursively(&self, path: &std::path::PathBuf, depth: u8) {
+        if depth > self.depth.unwrap() {
+            return;
+        }
+
+        // Get file info.
+        let file_info = self.get_file_info(path);
+
+        // Get file name with color.
+        let file_name_with_color = self.color_file_names(&file_info);
+
+        // Print file name with color.
+        println!(
+            "{:indent$}| - {}",
+            "",
+            file_name_with_color,
+            indent = (depth * 5) as usize
+        );
+
+        // If the file is a directory, get all files and directories in it.
+        if file_info.file_type == FileType::Dir {
+            let paths = fs::read_dir(path).unwrap();
+            for path in paths {
+                let path = path.unwrap().path();
+                self.show_as_tree_recursively(&path, depth + 1);
+            }
+        }
     }
 
     // If don't get any option or use other options that don't define,
@@ -224,12 +288,6 @@ impl LsCli {
     #[cfg(unix)]
     // Just print files and dirs name in the path
     fn get_files_and_dirs(&mut self) {
-        // Check if the path is exist.
-        if self.path.is_none() {
-            let msg = format!("Error: path is not exist").red();
-            panic!("{}", msg);
-        }
-
         // Get PathBuf of file.
         let path_buf: &std::path::PathBuf = self.path.as_ref().unwrap();
 
@@ -252,7 +310,8 @@ impl LsCli {
         if self.sort_by_size {
             self.files.sort_by(|f1, f2| f1.size.cmp(&f2.size));
         } else if self.sort_by_time {
-            self.files.sort_by(|f1, f2: &FileInfo| f1.modified_time.cmp(&f2.modified_time));
+            self.files
+                .sort_by(|f1, f2: &FileInfo| f1.modified_time.cmp(&f2.modified_time));
         } else {
             self.files.sort_by(|f1, f2| f1.name.cmp(&f2.name));
         }
