@@ -76,7 +76,7 @@ struct LsCli {
         short = 'd',
         long = "depth",
         help = "set the depth of the tree, default is 10",
-        default_value = "10",
+        default_value = "10"
     )]
     depth: Option<u8>,
 
@@ -170,6 +170,16 @@ impl LsCli {
 
     // Show files and directories as a tree recursively.
     fn show_as_tree_recursively(&self, path: &std::path::PathBuf, depth: u8) {
+        if !path.exists() {
+            println!(
+                "{:indent$}| - {}",
+                "",
+                "No such file or directory".red(),
+                indent = (depth * 5) as usize
+            );
+            return;
+        }
+
         if depth > self.depth.unwrap() {
             return;
         }
@@ -190,7 +200,18 @@ impl LsCli {
 
         // If the file is a directory, get all files and directories in it.
         if file_info.file_type == FileType::Dir {
-            let paths = fs::read_dir(path).unwrap();
+            let paths = match fs::read_dir(path) {
+                Ok(paths) => paths,
+                Err(_) => {
+                    println!(
+                        "{:indent$}| - {}",
+                        "",
+                        "Permission denied".red(),
+                        indent = (depth * 5) as usize
+                    );
+                    return;
+                }
+            };
             for path in paths {
                 let path = path.unwrap().path();
                 self.show_as_tree_recursively(&path, depth + 1);
@@ -299,7 +320,13 @@ impl LsCli {
         } else {
             // If it is a directory, get all files and directories in it.
             // And store them to the vec.
-            let paths = fs::read_dir(path_buf).unwrap();
+            let paths = match fs::read_dir(path_buf) {
+                Ok(paths) => paths,
+                Err(_) => {
+                    let msg = format!("Error: Permission denied").red();
+                    panic!("{}", msg);
+                }
+            };
             for path in paths {
                 let path = path.unwrap().path();
                 self.files.push(self.get_file_info(&path));
@@ -329,7 +356,7 @@ impl LsCli {
         let metadata = path_buf.metadata().unwrap();
 
         // Get file basic info include: permissions, type, name and is not hidden.
-        let file_permission_and_type = self.analysis_mode(&metadata);
+        let (permission, file_type) = self.analysis_mode(&metadata);
 
         // Get file name and judge if it is hidden.
         let file_name = path_buf.file_name().unwrap().to_string_lossy().to_string();
@@ -342,7 +369,28 @@ impl LsCli {
         let modify_time: DateTime<Local> = metadata.modified().unwrap().into();
         let modify_time = modify_time.format("%Y-%m-%d %H:%M:%S").to_string();
 
-        // get owner and group name by uid and gid.
+        // Get owner and group name.
+        let (owner_name, group_name) = self.get_owner_and_group_name(path_buf);
+
+        // Store these infos to FileInfo struct and add it to vec.
+        let fi = FileInfo {
+            permissions: permission,
+            file_type: file_type,
+            link: link_num,
+            owner: owner_name,
+            group: group_name,
+            size: metadata.len(),
+            modified_time: modify_time,
+            name: file_name,
+            is_hidden,
+        };
+
+        fi
+    }
+
+    #[cfg(unix)]
+    fn get_owner_and_group_name(&self, path_buf: &std::path::PathBuf) -> (String, String) {
+        let metadata = path_buf.metadata().unwrap();
         let uid = metadata.uid();
         let gid = metadata.gid();
 
@@ -354,20 +402,7 @@ impl LsCli {
             .map(|g| g.name().to_string_lossy().into_owned())
             .unwrap_or_else(|| "Unknown".to_string());
 
-        // Store these infos to FileInfo struct and add it to vec.
-        let fi = FileInfo {
-            permissions: file_permission_and_type.0,
-            file_type: file_permission_and_type.1,
-            link: link_num,
-            owner: owner_name,
-            group: group_name,
-            size: metadata.len(),
-            modified_time: modify_time,
-            name: file_name,
-            is_hidden,
-        };
-
-        fi
+        return (owner_name, group_name);
     }
 
     #[cfg(unix)]
