@@ -175,6 +175,7 @@ impl LsCli {
     }
 
     // Show files and directories as a tree recursively.
+    #[cfg(unix)]
     fn show_as_tree_recursively(&self, path: &std::path::PathBuf, depth: u8) {
         if !path.exists() {
             println!(
@@ -312,8 +313,8 @@ impl LsCli {
         format!("{:.2}{}", size, unit)
     }
 
-    #[cfg(unix)]
     // Just print files and dirs name in the path
+    #[cfg(unix)]
     fn get_files_and_dirs(&mut self) {
         // Get PathBuf of file.
         let path_buf: &std::path::PathBuf = self.path.as_ref().unwrap();
@@ -355,8 +356,8 @@ impl LsCli {
         }
     }
 
-    #[cfg(unix)]
     // Get file info, such as file size, modified time, etc.
+    #[cfg(unix)]
     fn get_file_info(&self, path_buf: &std::path::PathBuf) -> FileInfo {
         // Get file metadata, include file size, modified time, etc.
         let metadata = match fs::symlink_metadata(path_buf) {
@@ -443,8 +444,8 @@ impl LsCli {
         return (owner_name, group_name);
     }
 
-    #[cfg(unix)]
     // Analysis file mode from metadata.
+    #[cfg(unix)]
     fn analysis_mode(&self, metadata: &fs::Metadata) -> (String, FileType) {
         // Get file permissions.
         let mode: u32 = metadata.permissions().mode();
@@ -473,9 +474,9 @@ impl LsCli {
         result
     }
 
-    #[cfg(unix)]
     // Turn permission number to string.
     // For example: 0o755 => rwxr-xr-x
+    #[cfg(unix)]
     fn turn_permission_num_to_str(&self, num: u32) -> String {
         let mut result = String::from("");
 
