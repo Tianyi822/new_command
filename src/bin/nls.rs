@@ -1,8 +1,11 @@
+use libc::getgrgid;
 use std::{
     fmt::Debug,
     fs,
     os::unix::fs::{FileTypeExt, MetadataExt, PermissionsExt},
 };
+
+use std::ffi::CStr;
 
 use chrono::{DateTime, Local};
 use clap::Parser;
@@ -352,8 +355,11 @@ impl LsCli {
     #[cfg(unix)]
     // Get file info, such as file size, modified time, etc.
     fn get_file_info(&self, path_buf: &std::path::PathBuf) -> FileInfo {
-        // Get file info, such as file size, modified time, etc.
-        let metadata = path_buf.metadata().unwrap();
+        // Get file metadata, include file size, modified time, etc.
+        let metadata = match fs::symlink_metadata(path_buf) {
+            Ok(metadata) => metadata,
+            Err(_) => path_buf.metadata().unwrap(),
+        };
 
         // Get file basic info include: permissions, type, name and is not hidden.
         let (permission, file_type) = self.analysis_mode(&metadata);
@@ -361,6 +367,8 @@ impl LsCli {
         // Get file name and judge if it is hidden.
         let file_name = path_buf.file_name().unwrap().to_string_lossy().to_string();
         let is_hidden = file_name.starts_with(".");
+
+        // println!("{}", format!("{} - {}", file_name, permission).red());
 
         // Get file link number.
         let link_num = metadata.nlink();
@@ -370,7 +378,7 @@ impl LsCli {
         let modify_time = modify_time.format("%Y-%m-%d %H:%M:%S").to_string();
 
         // Get owner and group name.
-        let (owner_name, group_name) = self.get_owner_and_group_name(path_buf);
+        let (owner_name, group_name) = self.get_owner_and_group_name(&metadata, &file_type);
 
         // Store these infos to FileInfo struct and add it to vec.
         let fi = FileInfo {
@@ -388,19 +396,46 @@ impl LsCli {
         fi
     }
 
+    // Get owner and group name.
     #[cfg(unix)]
-    fn get_owner_and_group_name(&self, path_buf: &std::path::PathBuf) -> (String, String) {
-        let metadata = path_buf.metadata().unwrap();
+    fn get_owner_and_group_name(
+        &self,
+        metadata: &fs::Metadata,
+        file_type: &FileType,
+    ) -> (String, String) {
+        let group_name: String;
+
         let uid = metadata.uid();
         let gid = metadata.gid();
+
+        // If the file type is not file, dir or link, just one way to get group name by libc.
+        // It's so difficult to get group name by std::os::unix::fs::MetadataExt and users crate.
+        // Because The method in the 'user crate' for converting a gid to a group name
+        // can cause the program to panic due to memory alignment issues.
+        // So it is necessary to use libc to call the C language implementation to accomplish this functionality.
+        if file_type != &FileType::File
+            || file_type != &FileType::Dir
+            || file_type != &FileType::Link
+        {
+            // 获取用户组名
+            let group_info = unsafe { getgrgid(gid) };
+            group_name = if !group_info.is_null() {
+                let group_name_cstr = unsafe { CStr::from_ptr((*group_info).gr_name) };
+                group_name_cstr.to_string_lossy().into_owned()
+            } else {
+                "".to_string()
+            }
+        } else {
+            group_name = get_group_by_gid(gid)
+                .map(|g| g.name().to_string_lossy().into_owned())
+                .unwrap_or_else(|| "Unknown".to_string());
+        }
 
         let owner_name = get_user_by_uid(uid)
             .map(|u| u.name().to_string_lossy().into_owned())
             .unwrap_or_else(|| "Unknown".to_string());
 
-        let group_name = get_group_by_gid(gid)
-            .map(|g| g.name().to_string_lossy().into_owned())
-            .unwrap_or_else(|| "Unknown".to_string());
+        // println!("{} - {}", owner_name, group_name);
 
         return (owner_name, group_name);
     }
