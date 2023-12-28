@@ -1,4 +1,5 @@
 use libc::getgrgid;
+use new_command::Cli;
 use std::{
     fmt::Debug,
     fs,
@@ -109,6 +110,33 @@ struct LsCli {
     files: Vec<FileInfo>,
 }
 
+impl Cli for LsCli {
+    // Execute the command
+    fn execute(&mut self) {
+        // Check if the path is exist.
+        if self.path.is_none() {
+            let msg = format!("Error: path is not exist").red();
+            panic!("{}", msg);
+        } else {
+            // If the path is exist, get the canonical path
+            // Convert the path to an absolute path because the path may be a relative path.
+            // The relative path may cause panic when use fs::PathBuf.file_name() would return None.
+            self.path = Some(self.path.as_ref().unwrap().canonicalize().unwrap());
+        }
+
+        self.set_status();
+        // Get files and directories info from the target path, and store them to the vec.
+        self.get_files_and_dirs();
+
+        let _v = match self.get_status() {
+            0 | 2 | 4 => self.show_names(),
+            1 | 3 | 5 | 7 => self.show_infos(),
+            8 => self.show_as_tree(),
+            _ => self.show_names(),
+        };
+    }
+}
+
 impl LsCli {
     // Set status of the command
     fn set_status(&mut self) {
@@ -138,31 +166,6 @@ impl LsCli {
     // Get status of the command
     fn get_status(&self) -> u8 {
         self.status
-    }
-
-    // Execute the command
-    pub fn execute(&mut self) {
-        // Check if the path is exist.
-        if self.path.is_none() {
-            let msg = format!("Error: path is not exist").red();
-            panic!("{}", msg);
-        } else {
-            // If the path is exist, get the canonical path
-            // Convert the path to an absolute path because the path may be a relative path.
-            // The relative path may cause panic when use fs::PathBuf.file_name() would return None.
-            self.path = Some(self.path.as_ref().unwrap().canonicalize().unwrap());
-        }
-
-        self.set_status();
-        // Get files and directories info from the target path, and store them to the vec.
-        self.get_files_and_dirs();
-
-        let _v = match self.get_status() {
-            0 | 2 | 4 => self.show_names(),
-            1 | 3 | 5 | 7 => self.show_infos(),
-            8 => self.show_as_tree(),
-            _ => self.show_names(),
-        };
     }
 
     // Show files and directories as a tree.
