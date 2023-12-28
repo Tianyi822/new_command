@@ -10,7 +10,7 @@ name = "nls"
 path = "src/bin/nls.rs"
 
 [[bin]]
-name = "nhistory"
+name = "nhist"
 path = "src/bin/nhistory.rs"
 
 [dependencies]
